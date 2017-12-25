@@ -21,34 +21,51 @@ public class RRT {
 
     public Point getRandomPoint() {
         Random randomGenerator = new Random();
-        Point pt = new Point(randomGenerator.nextInt(sizeX), randomGenerator.nextInt(sizeY));
+        Point pt = new Point(randomGenerator.nextDouble() * sizeX, randomGenerator.nextDouble() * sizeY);
         return pt;
     }
 
-    public boolean checkObstacle(Node nearest, Point pt, List<Obstacle> obstacles) {
-        Line2D line1 = new Line2D.Double(nearest.getData().getX(),
-                nearest.getData().getY(),
-                pt.getX(),
-                pt.getY()
+    private boolean checkLines(Point p1, Point p2, Point p3, Point p4) {
+        Line2D line1 = new Line2D.Double(p1.getX(), p1.getY(),
+                p2.getX(), p2.getY()
         );
-        Line2D line2;
+        Line2D line2 = new Line2D.Double(p3.getX(), p3.getY(),
+                p4.getX(), p4.getY()
+        );
+        return (line2.intersectsLine(line1));
+    }
+
+    public boolean checkObstacle(Node nearest, Point pt, List<Obstacle> obstacles) {
+        boolean intersect = false;
+        double maxY, minY, maxX, minX;
+        if (nearest.getData().getY() > pt.getY()) {
+            maxY = nearest.getData().getY();
+            minY = pt.getY();
+        } else {
+            minY = nearest.getData().getY();
+            maxY = pt.getY();
+        }
+        if (nearest.getData().getX() > pt.getX()) {
+            maxX = nearest.getData().getX();
+            minX = pt.getX();
+        } else {
+            minX = nearest.getData().getX();
+            maxX = pt.getX();
+        }
         for (Obstacle o: obstacles) {
-            List<Point> vertices = o.getVertices();
-            for (int i = 0; i < vertices.size(); ++i) {
-                if (i == vertices.size() - 1)
-                    line2 = new Line2D.Double(vertices.get(i).getX(),
-                            vertices.get(i).getY(),
-                            vertices.get(0).getX(),
-                            vertices.get(0).getY()
-                    );
-                else
-                    line2 = new Line2D.Double(vertices.get(i).getX(),
-                            vertices.get(i).getY(),
-                            vertices.get(i + 1).getX(),
-                            vertices.get(i + 1).getY()
-                    );
-                if (line2.intersectsLine(line1)) {
-                    return true;
+            if (o.getMaxY() > minY || o.getMinY() < maxY || o.getMaxX() > minX || o.getMinX() < maxX) {
+                List<Point> vertices = o.getVertices();
+                for (int i = 0; i < vertices.size(); ++i) {
+                    if (vertices.get(i).getY() > minY || vertices.get(i).getY() < maxY ||
+                            vertices.get(i).getX() > minX || vertices.get(i).getX() < maxX) {
+                        if (i == vertices.size() - 1)
+                            intersect = checkLines(nearest.getData(), pt, vertices.get(i), vertices.get(0));
+                        else
+                            intersect = checkLines(nearest.getData(), pt, vertices.get(i), vertices.get(i + 1));
+                        if (intersect) {
+                            return true;
+                        }
+                    }
                 }
             }
         }
@@ -79,7 +96,8 @@ public class RRT {
 
     public List<Node> method(Point start, Point finish, List<Obstacle> polygons) {
         double delta = 5.0;
-        int iterations = 1000;
+        int maxIterations = 10000;
+        int iterations = 5000;
         Node explore = new Node(start, null);
         int i, j = 0;
         Point pt;
@@ -90,12 +108,16 @@ public class RRT {
                 pt = getRandomPoint();
                 nearestVertex = explore.closestVertex(pt);
                 ++j;
-            }while (nearestVertex.distance(pt) > delta ||
+                if (j > maxIterations) {
+                    break;
+                }
+            }while (//nearestVertex.distance(pt) > delta ||
                     checkObstacle(nearestVertex, pt, polygons) ||
                             (nearestVertex.getData().getX() == pt.getX() && nearestVertex.getData().getY() == pt.getY())
                     );
-            if (j > 20000)
+            if (j > maxIterations){
                 break;
+            }
             explore.addChildAt(nearestVertex, pt);
             if (nearestVertex.isReached(finish)) {
                 break;
@@ -107,6 +129,7 @@ public class RRT {
             q = q.getParent();
         }
         System.out.println("Iterations: " + i);
+        System.out.println("MaxIterations: " + j);
         return path;
     }
 }

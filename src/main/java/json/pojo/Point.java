@@ -9,7 +9,7 @@ public class Point {
     private double y;
 
     @JsonCreator
-    public Point(@JsonProperty("x") int x, @JsonProperty("y") int y) {
+    public Point(@JsonProperty("x") double x, @JsonProperty("y") double y) {
         this.x = x;
         this.y = y;
     }
